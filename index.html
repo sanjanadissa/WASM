@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Browser-based image editor powered by WebAssembly. Edit photos with transforms, filters, and more — all processing runs locally in your browser." />
+  <title>WASM Image Editor</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+</head>
+<body>
+  <div id="app">
+
+    <!-- ══════════════════════════════════════════════════════════════
+         TOOLBAR (floating bottom center)
+         ══════════════════════════════════════════════════════════════ -->
+    <div id="toolbar">
+      <!-- Open file -->
+      <button class="toolbar-btn" id="btn-open" title="Open image (Ctrl+O)">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17,8 12,3 7,8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+      </button>
+
+      <div class="toolbar-divider"></div>
+
+      <!-- Tool selection -->
+      <button class="toolbar-btn tool-btn active" id="btn-select" data-tool="select" title="Select (V)">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3l7.07 16.97 2.51-7.39 7.39-2.51L3 3z"/><path d="m13 13 6 6"/></svg>
+      </button>
+
+      <button class="toolbar-btn tool-btn" id="btn-hand" data-tool="hand" title="Hand tool (H)">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 11V6a2 2 0 0 0-2-2 2 2 0 0 0-2 2v0"/><path d="M14 10V4a2 2 0 0 0-2-2 2 2 0 0 0-2 2v2"/><path d="M10 10.5V6a2 2 0 0 0-2-2 2 2 0 0 0-2 2v8"/><path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 13"/></svg>
+      </button>
+
+      <button class="toolbar-btn" id="btn-fit" title="Fit to screen (0)">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M21 8V5a2 2 0 0 0-2-2h-3"/><path d="M3 16v3a2 2 0 0 0 2 2h3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/></svg>
+      </button>
+
+      <!-- Rotate/flip dropdown -->
+      <div style="position: relative;">
+        <button class="toolbar-btn" id="btn-rotate" title="Rotate & Flip">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/></svg>
+        </button>
+        <div class="toolbar-menu" id="rotate-menu">
+          <button class="menu-item" id="action-rotate-cw">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/></svg>
+            Rotate 90° CW
+          </button>
+          <button class="menu-item" id="action-rotate-ccw">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9c-2.52 0-4.93 1-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+            Rotate 90° CCW
+          </button>
+          <button class="menu-item" id="action-rotate-180">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z"/><path d="M9 12l3-3 3 3"/><path d="M9 12l3 3 3-3"/></svg>
+            Rotate 180°
+          </button>
+          <div class="menu-divider"></div>
+          <button class="menu-item" id="action-flip-h">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="2" x2="12" y2="22"/><polyline points="5,8 2,12 5,16"/><polyline points="19,8 22,12 19,16"/></svg>
+            Flip Horizontal
+          </button>
+          <button class="menu-item" id="action-flip-v">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="2" y1="12" x2="22" y2="12"/><polyline points="8,5 12,2 16,5"/><polyline points="8,19 12,22 16,19"/></svg>
+            Flip Vertical
+          </button>
+        </div>
+      </div>
+
+      <!-- Crop -->
+      <button class="toolbar-btn tool-btn" id="btn-crop" data-tool="crop" title="Crop (C)">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2v14a2 2 0 0 0 2 2h14"/><path d="M18 22V8a2 2 0 0 0-2-2H2"/></svg>
+      </button>
+
+      <!-- Resize -->
+      <button class="toolbar-btn" id="btn-resize" title="Resize">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15,3 21,3 21,9"/><polyline points="9,21 3,21 3,15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
+      </button>
+
+      <div class="toolbar-divider"></div>
+
+      <!-- Zoom controls -->
+      <div class="zoom-control" style="position: relative;">
+        <button class="toolbar-btn zoom-btn" id="btn-zoom-out" title="Zoom out (-)">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
+        </button>
+        <button id="zoom-value" title="Click for zoom presets">100%</button>
+        <button class="toolbar-btn zoom-btn" id="btn-zoom-in" title="Zoom in (+)">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
+        </button>
+        <div class="toolbar-menu" id="zoom-menu">
+          <button class="menu-item zoom-preset" data-zoom="fit">Fit to screen</button>
+          <div class="menu-divider"></div>
+          <button class="menu-item zoom-preset" data-zoom="0.25">25%</button>
+          <button class="menu-item zoom-preset" data-zoom="0.5">50%</button>
+          <button class="menu-item zoom-preset" data-zoom="0.75">75%</button>
+          <button class="menu-item zoom-preset" data-zoom="1">100%</button>
+          <button class="menu-item zoom-preset" data-zoom="1.5">150%</button>
+          <button class="menu-item zoom-preset" data-zoom="2">200%</button>
+          <button class="menu-item zoom-preset" data-zoom="3">300%</button>
+        </div>
+      </div>
+
+      <div class="toolbar-divider"></div>
+
+      <!-- Undo / Redo -->
+      <button class="toolbar-btn disabled" id="btn-undo" title="Undo (Ctrl+Z)">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"/></svg>
+      </button>
+      <button class="toolbar-btn disabled" id="btn-redo" title="Redo (Ctrl+Y)">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 7v6h-6"/><path d="M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6 2.3L21 13"/></svg>
+      </button>
+
+      <div class="toolbar-divider"></div>
+
+      <!-- Export -->
+      <div style="position: relative;">
+        <button class="btn-export" id="btn-export">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Export
+        </button>
+        <div class="toolbar-menu" id="export-menu">
+          <button class="menu-item" id="export-png">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><text x="12" y="15" text-anchor="middle" fill="currentColor" stroke="none" font-size="8" font-weight="700">PNG</text></svg>
+            Save as PNG
+          </button>
+          <button class="menu-item" id="export-jpeg">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><text x="12" y="15" text-anchor="middle" fill="currentColor" stroke="none" font-size="7" font-weight="700">JPG</text></svg>
+            Save as JPEG
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════════════
+         CANVAS AREA
+         ══════════════════════════════════════════════════════════════ -->
+    <div id="canvas-area">
+      <canvas id="editor-canvas"></canvas>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════════════
+         FILTER BAR (floating top center)
+         ══════════════════════════════════════════════════════════════ -->
+    <div id="filter-bar">
+      <button class="filter-btn" id="btn-grayscale">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 2a10 10 0 0 1 0 20" fill="currentColor" opacity="0.3"/></svg>
+        <span>Grayscale</span>
+      </button>
+
+      <button class="filter-btn" id="btn-invert">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 2a10 10 0 0 0 0 20" fill="currentColor"/></svg>
+        <span>Invert</span>
+      </button>
+
+      <div class="filter-divider"></div>
+
+      <button class="filter-btn" id="btn-blur">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="7" opacity="0.4"/><circle cx="12" cy="12" r="10" opacity="0.2"/></svg>
+        <span>Blur</span>
+      </button>
+
+      <button class="filter-btn" id="btn-sharpen">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12,2 22,22 2,22"/></svg>
+        <span>Sharpen</span>
+      </button>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════════════
+         CROP ACTIONS
+         ══════════════════════════════════════════════════════════════ -->
+    <div id="crop-actions">
+      <button class="crop-btn apply" id="crop-apply">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20,6 9,17 4,12"/></svg>
+        Apply Crop
+      </button>
+      <button class="crop-btn cancel" id="crop-cancel">
+        Cancel
+      </button>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════════════
+         STATUS BAR
+         ══════════════════════════════════════════════════════════════ -->
+    <div id="status-bar">
+      <span id="status-dimensions"></span>
+      <span id="status-time"></span>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════════════
+         DIALOGS
+         ══════════════════════════════════════════════════════════════ -->
+    <div id="dialog-overlay">
+      <!-- Slider dialog (blur, sharpen) -->
+      <div class="dialog" id="slider-dialog">
+        <div class="dialog-title">Blur Radius</div>
+        <div class="dialog-row">
+          <input type="range" class="dialog-slider" min="1" max="50" value="5" step="1" />
+          <span class="dialog-value">5</span>
+        </div>
+        <div class="dialog-actions">
+          <button class="dialog-cancel">Cancel</button>
+          <button class="dialog-apply">Apply</button>
+        </div>
+      </div>
+
+      <!-- Resize dialog -->
+      <div class="dialog" id="resize-dialog">
+        <div class="dialog-title">Resize Image</div>
+        <div class="dialog-row">
+          <span class="dialog-label">Width</span>
+          <input type="number" class="dialog-input" id="resize-width" min="1" max="10000" />
+          <span class="dialog-label">px</span>
+        </div>
+        <div class="dialog-row">
+          <span class="dialog-label">Height</span>
+          <input type="number" class="dialog-input" id="resize-height" min="1" max="10000" />
+          <span class="dialog-label">px</span>
+        </div>
+        <div class="dialog-checkbox-row">
+          <input type="checkbox" id="resize-lock-aspect" checked />
+          <label for="resize-lock-aspect">Lock aspect ratio</label>
+        </div>
+        <div class="dialog-actions">
+          <button class="dialog-cancel">Cancel</button>
+          <button class="dialog-apply">Resize</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════════════
+         LOADING OVERLAYS
+         ══════════════════════════════════════════════════════════════ -->
+    <div id="loading-overlay">
+      <div class="loading-spinner"></div>
+      <div class="loading-text">Processing…</div>
+    </div>
+
+    <div id="boot-loading">
+      <div class="loading-spinner"></div>
+      <div class="loading-text">Loading WASM engine…</div>
+    </div>
+
+    <!-- Hidden file input -->
+    <input type="file" id="file-input" accept="image/*" />
+
+  </div>
+
+  <script type="module" src="/src/js/main.js"></script>
+</body>
+</html>
