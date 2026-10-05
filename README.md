@@ -283,3 +283,142 @@ WebAssembly's "linear memory" is a single `ArrayBuffer`. Pointers from `_malloc`
 ## License
 
 MIT — do whatever you want with it.
+
+Project File Structure
+image-editor-wasm/
+├── index.html                  # Main UI structure and semantic markup
+├── package.json                # Project dependencies and npm scripts
+├── vite.config.js              # Vite server configuration & COOP/COEP headers
+├── build-wasm.sh               # Bash compilation script (Linux / macOS / WSL)
+├── build-wasm.bat              # Batch compilation script (Windows CMD)
+├── scripts/
+│   └── build-wasm.mjs          # Cross-platform Node.js build runner
+├── public/
+│   └── wasm/                   # Output destination for compiled WASM artifacts
+│       ├── image_ops.js        # (Generated) Emscripten ES6 module loader
+│       └── image_ops.wasm      # (Generated) Compiled WebAssembly binary
+├── src/
+│   ├── c/                      # C source files (all image processing)
+│   │   ├── image_ops.h         # Function declarations, types, export macros
+│   │   ├── transforms.c        # Flips, rotations, crop, bilinear resize
+│   │   └── filters.c           # Grayscale, invert, box blur, sharpen
+│   ├── js/                     # Vanilla ES Module frontend
+│   │   ├── main.js             # Application bootstrap & initialization
+│   │   ├── wasm-bridge.js      # JS <-> WASM memory management & function wrapping
+│   │   ├── editor-state.js     # State store & undo/redo history management
+│   │   ├── canvas-view.js      # Zoom, pan, viewport rendering & crop overlay
+│   │   └── ui.js               # Event handlers, toolbar bindings, dialogs
+│   └── styles/
+│       └── main.css            # Dark mode UI, toolbars, status bar, modals
+└── README.md                   # Complete documentation and reference guide
+
+
+Key Concept: How Data & Memory Cross the JS ↔ WASM Boundary
+WebAssembly executes in a sandboxed linear memory space represented in JavaScript as a single expandable WebAssembly.Memory buffer (ArrayBuffer). C pointers are simply integer byte offsets into this buffer.
+
++-------------------------------------------------------------------------+
+| JavaScript Environment                                                  |
+|                                                                         |
+|  canvas.getImageData() -> Uint8ClampedArray (RGBA bytes in JS heap)     |
+|                                                                         |
+|   1. _malloc(n) --------------------+ (allocate memory)                 |
+|   2. Module.HEAPU8.set(data, inPtr) | (copy bytes into WASM heap)       |
+|                                     v                                   |
+|   +-----------------------------------------------------------------+   |
+|   | WASM Linear Memory (Module.HEAPU8.buffer)                       |   |
+|   |                                                                 |   |
+|   |  Offset: inPtr                    Offset: outPtr                |   |
+|   |  +--------------------------+     +--------------------------+  |   |
+|   |  | Input RGBA Pixels        | --> | Output RGBA Pixels       |  |   |
+|   |  +--------------------------+     +--------------------------+  |   |
+|   |         ^                                      |                |   |
+|   +---------|--------------------------------------|----------------+   |
+|             |                                      |                    |
+|             +--- C function processes pixels ------+                    |
+|                  (e.g., _box_blur(in, out, ...))                        |
+|                                                                         |
+|   3. view = new Uint8ClampedArray(HEAPU8.buffer, outPtr, n)             |
+|   4. copiedData = new Uint8ClampedArray(view)   (copy back to JS heap)  |
+|   5. _free(inPtr); _free(outPtr);              (prevent memory leaks)   |
+|   6. putImageData(new ImageData(copiedData))                            |
++-------------------------------------------------------------------------+
+
+## Passing Data to WASM
+Call _malloc(byteLength) to reserve an allocation in WASM memory, returning inPtr.
+Copy pixels from JS into WASM using Module.HEAPU8.set(sourceUint8Array, inPtr).
+## Executing Operations
+Call the C function passing inPtr, outPtr, width, height, and operation parameters.
+## Retrieving Data from WASM
+Instantiate a temporary view: new Uint8ClampedArray(Module.HEAPU8.buffer, outPtr, outLength).
+Copy the view into an independent buffer before freeing: new Uint8ClampedArray(view).
+## Freeing Memory
+Explicitly call _free(inPtr) and _free(outPtr) to prevent WASM heap exhaustion.
+## Memory Growth Hazard:
+With ALLOW_MEMORY_GROWTH=1, allocations expanding the memory buffer will detach existing ArrayBuffer views. 
+
+wasm-bridge.js
+ accesses Module.HEAPU8 directly after each allocation to always reference the active buffer.
+
+ Step-by-Step Instructions: Install, Build, and Run
+Step 1: Install Node.js
+Ensure Node.js (v18 or higher) is installed:
+
+Windows: winget install OpenJS.NodeJS.LTS or download from nodejs.org.
+Verify in your terminal:
+powershell
+node --version
+npm --version
+Step 2: Install and Activate Emscripten SDK (emsdk)
+If Emscripten is not yet installed:
+
+powershell
+# 1. Clone emsdk
+git clone https://github.com/emscripten-core/emsdk.git
+cd emsdk
+# 2. Install and activate the latest toolchain
+./emsdk install latest
+./emsdk activate latest
+# 3. Activate environment variables for the current terminal session
+# On Windows PowerShell:
+.\emsdk_env.ps1
+# On Windows CMD:
+emsdk_env.bat
+# On Linux / macOS / WSL:
+source ./emsdk_env.sh
+Verify emcc is accessible:
+
+powershell
+emcc --version
+Step 3: Install Project Dependencies
+In the 
+
+image-editor-wasm
+ folder:
+
+powershell
+cd c:\Users\Asus\OneDrive\Desktop\CODIMITE\WASM\image-editor-wasm
+npm install
+Step 4: Compile the C Code to WebAssembly
+Run any of the build commands (with your emsdk environment active):
+
+Using npm:
+powershell
+npm run build:wasm
+Or directly using the Windows batch script:
+cmd
+build-wasm.bat
+Or on Linux/macOS/Git Bash:
+bash
+chmod +x build-wasm.sh
+./build-wasm.sh
+This outputs:
+
+
+
+public/wasm/image_ops.js
+ (ES6 module loader)
+public/wasm/image_ops.wasm (Compiled WebAssembly binary)
+Step 5: Start the Development Server
+powershell
+npm run dev
+Open your browser to http://localhost:3000 to interact with the WASM image editor.
